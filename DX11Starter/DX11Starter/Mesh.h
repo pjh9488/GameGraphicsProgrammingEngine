@@ -10,7 +10,9 @@
 class Mesh
 {
 public:
-	Mesh(Vertex * vertices, int numberOfVerticies, int * indicies, int numberOfIndicies, ID3D11Device * device);
+	Mesh(Vertex * vertices, int numberOfVerticies, unsigned int * indicies, int numberOfIndicies, ID3D11Device * device);
+	Mesh(const char* objFile, ID3D11Device* device);
+	void CreateBuffers(Vertex * vertices, int numberOfVerticies, unsigned int * indicies, int numberOfIndicies, ID3D11Device * device);
 	~Mesh();
 	ID3D11Buffer * GetVertexBuffer();
 	ID3D11Buffer * GetIndexBuffer();

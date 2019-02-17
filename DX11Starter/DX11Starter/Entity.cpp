@@ -1,9 +1,10 @@
 #include "Entity.h"
 #include <DirectXMath.h>
 #include "DXCore.h"
+#include "Material.h"
 using namespace DirectX;
 
-Entity::Entity(Mesh* m,float xpos,float ypos,float zpos, float xrot, float yrot, float zrot, float xscale, float yscale, float zscale)
+Entity::Entity(Material* mat,Mesh* m,float xpos,float ypos,float zpos, float xrot, float yrot, float zrot, float xscale, float yscale, float zscale)
 {
 	XMMATRIX w = XMMatrixIdentity();
 	XMStoreFloat4x4(&world, XMMatrixTranspose(w));
@@ -17,10 +18,11 @@ Entity::Entity(Mesh* m,float xpos,float ypos,float zpos, float xrot, float yrot,
 	scale.x = xscale;
 	scale.y = yscale;
 	scale.z = zscale;
+	material = mat;
 
 }
 
-Entity::Entity(Mesh* m, XMFLOAT3 pos, XMFLOAT3 rot, XMFLOAT3 scale1)
+Entity::Entity(Material* mat,Mesh* m, XMFLOAT3 pos, XMFLOAT3 rot, XMFLOAT3 scale1)
 {
 	XMMATRIX w = XMMatrixIdentity();
 	XMStoreFloat4x4(&world, XMMatrixTranspose(w));
@@ -28,6 +30,26 @@ Entity::Entity(Mesh* m, XMFLOAT3 pos, XMFLOAT3 rot, XMFLOAT3 scale1)
 	position = pos;
 	rotation = rot;
 	scale = scale1;
+	material = mat;
+}
+
+Entity::Entity(Material* mat, Mesh* m)
+{
+	XMMATRIX w = XMMatrixIdentity();
+	XMStoreFloat4x4(&world, XMMatrixTranspose(w));
+	mesh = m;
+
+	position.x = 0;
+	position.y = 0;
+	position.z = 0;
+	rotation.x = 0;
+	rotation.y = 0;
+	rotation.z = 0;
+	scale.x = 1;
+	scale.y = 1;
+	scale.z = 1;
+	material = mat;
+
 }
 
 
@@ -189,7 +211,7 @@ void Entity::ScaleZ(float z)
 ///Update the World Matrix and return it
 DirectX::XMFLOAT4X4 Entity::UpdateWorld()
 {
-	XMMATRIX pos = XMMatrixTranslation(position.x,position.y,position.z);
+	XMMATRIX pos = XMMatrixTranslation(position.x, position.y, position.z);
 	XMMATRIX sc = XMMatrixScaling(scale.x,scale.y,scale.z);
 	XMMATRIX rotX = XMMatrixRotationX(rotation.x);
 	XMMATRIX rotY = XMMatrixRotationY(rotation.y);
@@ -203,6 +225,28 @@ DirectX::XMFLOAT4X4 Entity::UpdateWorld()
 
 	return world;
 
+}
+
+void Entity::PrepareMaterials(DirectX::XMFLOAT4X4 view, DirectX::XMFLOAT4X4 proj)
+{
+
+	// Send data to shader variables
+	//  - Do this ONCE PER OBJECT you're drawing
+	//  - This is actually a complex process of copying data to a local buffer
+	//    and then copying that entire buffer to the GPU.  
+	//  - The "SimpleShader" class handles all of that for you.
+	material->GetVertexShader()->SetMatrix4x4("world", UpdateWorld());
+	material->GetVertexShader()->SetMatrix4x4("view",view);
+	material->GetVertexShader()->SetMatrix4x4("projection",proj);
+	material->GetVertexShader()->CopyAllBufferData();
+
+
+	// Set the vertex and pixel shaders to use for the next Draw() command
+//  - These don't technically need to be set every frame...YET
+//  - Once you start applying different shaders to different objects,
+//    you'll need to swap the current shaders before each draw
+	material->GetVertexShader()->SetShader();
+	material->GetPixelShader()->SetShader();
 }
 
 

@@ -5,6 +5,8 @@
 #include "Mesh.h"
 #include <DirectXMath.h>
 #include "Entity.h"
+#include "Camera.h"
+#include "Light.h"
 
 class Game 
 	: public DXCore
@@ -52,14 +54,24 @@ private:
 
 
 	//Mesh Objects
-	Mesh* Shape1;
-	Mesh* Shape2;
-	Mesh* Shape3;
+	Mesh* sphereMesh;
+	Mesh* helixMesh;
+	Mesh* torusMesh;
 
 
-	Entity* e1;
-	Entity* e2;
-	Entity* e3;
-	Entity* e4;
+	Entity* sphere;
+	Entity* helix;
+	Entity* torus;
+
+	Material* material1;
+
+
+
+	//Main Camera
+	Camera* main;
+	bool mouseDown;
+
+	Light DirectionalLight;
+	Light DirectionalLight2;
 };
 

@@ -2,12 +2,14 @@
 #include "DXCore.h"
 #include <DirectXMath.h>
 #include "Mesh.h"
+#include "Material.h"
 
 class Entity
 {
 public:
-	Entity(Mesh* m, float xpos, float ypos, float zpos, float xrot, float yrot, float zrot, float xscale, float yscale, float zscale);
-	Entity(Mesh* m, DirectX::XMFLOAT3 pos, DirectX::XMFLOAT3 rot, DirectX::XMFLOAT3 scale);
+	Entity(Material* mat,Mesh* m, float xpos, float ypos, float zpos, float xrot, float yrot, float zrot, float xscale, float yscale, float zscale);
+	Entity(Material* mat, Mesh* m, DirectX::XMFLOAT3 pos, DirectX::XMFLOAT3 rot, DirectX::XMFLOAT3 scale);
+	Entity(Material * mat, Mesh * m);
 	~Entity();
 
 	void SetPosition(DirectX::XMFLOAT3 pos);
@@ -57,14 +59,16 @@ public:
 
 	DirectX::XMFLOAT4X4 UpdateWorld();
 
+	void PrepareMaterials(DirectX::XMFLOAT4X4 view, DirectX::XMFLOAT4X4 proj);
 	
 
-private:
+protected:
 	DirectX::XMFLOAT4X4 world; //World matrix
 	DirectX::XMFLOAT3 position;
 	DirectX::XMFLOAT3 rotation;
 	DirectX::XMFLOAT3 scale;
 	Mesh* mesh;
+	Material* material;
 	
 };
 

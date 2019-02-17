@@ -24,6 +24,8 @@ Game::Game(HINSTANCE hInstance)
 	// Initialize fields
 	vertexShader = 0;
 	pixelShader = 0;
+	mouseDown = false;
+	
 
 #if defined(DEBUG) || defined(_DEBUG)
 	// Do we want a console window?  Probably only in debug mode
@@ -46,14 +48,17 @@ Game::~Game()
 	delete vertexShader;
 	delete pixelShader;
 
-	delete e1;
-	delete e2;
-	delete e3;
-	delete e4;
+	delete sphereMesh;
+	delete sphere;
+	delete helixMesh;
+	delete helix;
+	delete torusMesh;
+	delete torus;
 
-	delete Shape1;
-	delete Shape2;
-	delete Shape3;
+	
+	delete material1;
+
+	delete main;
 
 }
 
@@ -74,6 +79,23 @@ void Game::Init()
 	// geometric primitives (points, lines or triangles) we want to draw.  
 	// Essentially: "What kind of shape should the GPU draw with our data?"
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	
+	
+	DirectionalLight.AmbientColor = { 0.1f,0.1f,0.1f,1.0f};
+	DirectionalLight.DiffuseColor = { 0.0f,0.0f,1.0f,1.0f };
+	DirectionalLight.Direction = { 1.0f,-1.0f,0.0f };
+
+	DirectionalLight2.AmbientColor = { 0.1f,0.1f,0.1f,1.0f };
+	DirectionalLight2.DiffuseColor = { 1.0f,0.647059f,0.0f,1.0f };
+	DirectionalLight2.Direction = { -0.5f,0.75f,0.0f };
+
+
+
+	pixelShader->SetData("light1", &DirectionalLight, sizeof(Light));
+	pixelShader->SetData("light2", &DirectionalLight2, sizeof(Light));
+	pixelShader->CopyAllBufferData(); // PUSH TO GPU HERE!
+
+	
 }
 
 // --------------------------------------------------------
@@ -89,6 +111,8 @@ void Game::LoadShaders()
 
 	pixelShader = new SimplePixelShader(device, context);
 	pixelShader->LoadShaderFile(L"PixelShader.cso");
+
+	material1 = new Material(pixelShader, vertexShader);
 }
 
 
@@ -124,6 +148,12 @@ void Game::CreateMatrices()
 		0.1f,						// Near clip plane distance
 		100.0f);					// Far clip plane distance
 	XMStoreFloat4x4(&projectionMatrix, XMMatrixTranspose(P)); // Transpose for HLSL!
+
+
+
+
+
+
 }
 
 
@@ -132,60 +162,21 @@ void Game::CreateMatrices()
 // --------------------------------------------------------
 void Game::CreateBasicGeometry()
 {
-	// Create some temporary variables to represent colors
-	// - Not necessary, just makes things more readable
 	
-	XMFLOAT4 red = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
-	XMFLOAT4 green = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
-	XMFLOAT4 blue = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
-	XMFLOAT4 magenta = XMFLOAT4(0.5f, 0.0f, 0.5f, 1.0f);
 
-	//Triangle
-	Vertex vertices1[] =
-	{
-		{ XMFLOAT3(+0.0f, +1.0f, +0.0f), red }, //top
-		{ XMFLOAT3(+1.75f, -1.0f, +0.0f), blue }, //Bottom right
-		{ XMFLOAT3(-1.75f, -1.0f, +0.0f), green }, //Bottom left
-	};
-
-	int indices1[] = { 0, 1, 2 };
-
-	Shape1 = new Mesh(vertices1, 3, indices1, 3, device); //Create the Mesh
-
-	//Rectangle
-	Vertex vertices2[] =
-	{
-	
-		{ XMFLOAT3(-1.0f, +0.5f, +0.0f), magenta }, //Left top
-		{ XMFLOAT3(+1.0f, +0.5f, +0.0f), magenta }, //right top
-		{ XMFLOAT3(+1.0f, -0.5f, +0.0f), green }, //right bottom
-		{ XMFLOAT3(-1.0f, -0.5f, +0.0f), green }, //left bottom
-	};
-
-	int indices2[] = { 0, 1, 2, 0, 2, 3 };
+	sphereMesh = new Mesh("Assets/Models/sphere.obj", device);
+	helixMesh = new Mesh("Assets/Models/helix.obj", device);
+	torusMesh = new Mesh("Assets/Models/torus.obj", device);
 
 
-	Shape2 = new Mesh(vertices2, 4, indices2, 6, device);
+	// Make some entities
+	sphere = new Entity(material1, sphereMesh);
+	helix = new Entity(material1, helixMesh);
+	torus = new Entity(material1,torusMesh);
 
-
-	//Rhombus
-	Vertex vertices3[] =
-	{
-		{ XMFLOAT3(-3.5f, +1.0f, +0.0f), blue },
-		{ XMFLOAT3(-0.5f, +1.0f, +0.0f), blue },
-		{ XMFLOAT3(+1.5f, -1.0f, +0.0f), red },
-		{ XMFLOAT3(-1.5f, -1.0f, +0.0f), red },
-	};
-
-	int indices3[] = { 0, 1, 2, 0, 2, 3 };
-
-	Shape3 = new Mesh(vertices3, 4, indices3, 6, device);
-
-	
-	e1 = new Entity(Shape1,0.0f,1.0f,0.0f,0.0f,0.0f,0.0f,1.0f,1.0f,1.0f);
-	e2 = new Entity(Shape2,-1.0f,-1.5f,0.0f,0.0f,0.0f,0.0f,1.2f,2,1.0f);
-	e3 = new Entity(Shape3, -1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f);
-	e4 = new Entity(Shape1, 2.5f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 2.0f, 0.5f, 0.5f);
+	sphere->SetPositionX(3.0f);
+	torus->SetPositionX(-3.0f);
+	main = new Camera();
 }
 
 
@@ -198,13 +189,7 @@ void Game::OnResize()
 	// Handle base-level DX resize stuff
 	DXCore::OnResize();
 
-	// Update our projection matrix since the window size changed
-	XMMATRIX P = XMMatrixPerspectiveFovLH(
-		0.25f * 3.1415926535f,	// Field of View Angle
-		(float)width / height,	// Aspect ratio
-		0.1f,				  	// Near clip plane distance
-		100.0f);			  	// Far clip plane distance
-	XMStoreFloat4x4(&projectionMatrix, XMMatrixTranspose(P)); // Transpose for HLSL!
+	main->UpdateProjectionMatrix(0.25f * 3.1415926535f,(float)width / height,0.1f,100.0f);
 }
 
 // --------------------------------------------------------
@@ -215,22 +200,9 @@ void Game::Update(float deltaTime, float totalTime)
 	// Quit if the escape key is pressed
 	if (GetAsyncKeyState(VK_ESCAPE))
 		Quit();
-	//Move the triangle around with WASD
 
+	main->Update(deltaTime);
 
-	float sinTime = (sin(totalTime * 10) + 2.0f) / 10.0f;
-
-	
-	e1->RotateZ(deltaTime);
-	e2->RotateZ(-deltaTime);
-	XMFLOAT3 rotSin = { 0,0,sinTime };
-	e3->SetRotation(rotSin);
-
-	XMFLOAT3 sinT = { sinTime,sinTime,0 };
-	e1->SetScale(sinT);
-
-	
-	e4->SetPosition(sinT);
 }
 
 // --------------------------------------------------------
@@ -256,80 +228,49 @@ void Game::Draw(float deltaTime, float totalTime)
 	//  - This is actually a complex process of copying data to a local buffer
 	//    and then copying that entire buffer to the GPU.  
 	//  - The "SimpleShader" class handles all of that for you.
-	vertexShader->SetMatrix4x4("world", e1->UpdateWorld());
-	vertexShader->SetMatrix4x4("view", viewMatrix);
-	vertexShader->SetMatrix4x4("projection", projectionMatrix);
-	vertexShader->CopyAllBufferData();
+	sphere->PrepareMaterials(main->GetViewMatrix(), main->GetProjectionMatrix());
 
-	// Set the vertex and pixel shaders to use for the next Draw() command
-	//  - These don't technically need to be set every frame...YET
-	//  - Once you start applying different shaders to different objects,
-	//    you'll need to swap the current shaders before each draw
-	vertexShader->SetShader();
-	pixelShader->SetShader();
-
+	
 //	// Set buffers in the input assembler
 //	//  - Do this ONCE PER OBJECT you're drawing, since each object might
 //	//    have different geometry.
 	UINT stride = sizeof(Vertex);
 	UINT offset = 0;
 	//Shape 1
-	ID3D11Buffer* Shape1VB = Shape1->GetVertexBuffer();
+	ID3D11Buffer* Shape1VB = sphereMesh->GetVertexBuffer();
 	context->IASetVertexBuffers(0, 1, &Shape1VB, &stride, &offset);
-	context->IASetIndexBuffer(Shape1->GetIndexBuffer(), DXGI_FORMAT_R32_UINT, 0);
+	context->IASetIndexBuffer(sphereMesh->GetIndexBuffer(), DXGI_FORMAT_R32_UINT, 0);
 //	// Finally do the actual drawing
 ////  - Do this ONCE PER OBJECT you intend to draw
 ////  - This will use all of the currently set DirectX "stuff" (shaders, buffers, etc)
 ////  - DrawIndexed() uses the currently set INDEX BUFFER to look up corresponding
 ////     vertices in the currently set VERTEX BUFFER
 	context->DrawIndexed(
-		Shape1->GetIndexCount(),     // The number of indices to use (we could draw a subset if we wanted)
+		sphereMesh->GetIndexCount(),     // The number of indices to use (we could draw a subset if we wanted)
 		0,     // Offset to the first index we want to use
 		0);    // Offset to add to each index when looking up vertices
 
 
 
-	vertexShader->SetMatrix4x4("world", e2->UpdateWorld());
-	vertexShader->SetMatrix4x4("view", viewMatrix);
-	vertexShader->SetMatrix4x4("projection", projectionMatrix);
-	vertexShader->CopyAllBufferData();
+	helix->PrepareMaterials(main->GetViewMatrix(), main->GetProjectionMatrix());
 
 	//Draw Shape 2
-	ID3D11Buffer* Shape2VB = Shape2->GetVertexBuffer();
+	ID3D11Buffer* Shape2VB = helixMesh->GetVertexBuffer();
 	context->IASetVertexBuffers(0, 1, &Shape2VB, &stride, &offset);
-	context->IASetIndexBuffer(Shape2->GetIndexBuffer(), DXGI_FORMAT_R32_UINT, 0);
+	context->IASetIndexBuffer(helixMesh->GetIndexBuffer(), DXGI_FORMAT_R32_UINT, 0);
 	context->DrawIndexed(
-		Shape2->GetIndexCount(),     // The number of indices to use (we could draw a subset if we wanted)
+		helixMesh->GetIndexCount(),     // The number of indices to use (we could draw a subset if we wanted)
 		0,     // Offset to the first index we want to use
 		0);    // Offset to add to each index when looking up vertices
 	
-	vertexShader->SetMatrix4x4("world", e3->UpdateWorld());
-	vertexShader->SetMatrix4x4("view", viewMatrix);
-	vertexShader->SetMatrix4x4("projection", projectionMatrix);
-	vertexShader->CopyAllBufferData();
+	torus->PrepareMaterials(main->GetViewMatrix(), main->GetProjectionMatrix());
 
 	//DrawShape 3
-	ID3D11Buffer* Shape3VB = Shape3->GetVertexBuffer();
+	ID3D11Buffer* Shape3VB = torusMesh->GetVertexBuffer();
 	context->IASetVertexBuffers(0, 1, &Shape3VB, &stride, &offset);
-	context->IASetIndexBuffer(Shape3->GetIndexBuffer(), DXGI_FORMAT_R32_UINT, 0);
+	context->IASetIndexBuffer(torusMesh->GetIndexBuffer(), DXGI_FORMAT_R32_UINT, 0);
 	context->DrawIndexed(
-		Shape3->GetIndexCount(),     // The number of indices to use (we could draw a subset if we wanted)
-		0,     // Offset to the first index we want to use
-		0);    // Offset to add to each index when looking up vertices
-
-
-
-
-	vertexShader->SetMatrix4x4("world", e4->UpdateWorld());
-	vertexShader->SetMatrix4x4("view", viewMatrix);
-	vertexShader->SetMatrix4x4("projection", projectionMatrix);
-	vertexShader->CopyAllBufferData();
-
-	//DrawShape 4
-	context->IASetVertexBuffers(0, 1, &Shape1VB, &stride, &offset);
-	context->IASetIndexBuffer(Shape1->GetIndexBuffer(), DXGI_FORMAT_R32_UINT, 0);
-	context->DrawIndexed(
-		Shape1->GetIndexCount(),     // The number of indices to use (we could draw a subset if we wanted)
+		torusMesh->GetIndexCount(),     // The number of indices to use (we could draw a subset if we wanted)
 		0,     // Offset to the first index we want to use
 		0);    // Offset to add to each index when looking up vertices
 
@@ -347,6 +288,7 @@ void Game::Draw(float deltaTime, float totalTime)
 void Game::OnMouseDown(WPARAM buttonState, int x, int y)
 {
 	// Add any custom code here...
+	mouseDown = true;
 
 	// Save the previous mouse position, so we have it for the future
 	prevMousePos.x = x;
@@ -364,7 +306,7 @@ void Game::OnMouseDown(WPARAM buttonState, int x, int y)
 void Game::OnMouseUp(WPARAM buttonState, int x, int y)
 {
 	// Add any custom code here...
-
+	mouseDown = false;
 	// We don't care about the tracking the cursor outside
 	// the window anymore (we're not dragging if the mouse is up)
 	ReleaseCapture();
@@ -378,10 +320,18 @@ void Game::OnMouseUp(WPARAM buttonState, int x, int y)
 void Game::OnMouseMove(WPARAM buttonState, int x, int y)
 {
 	// Add any custom code here...
+	if (mouseDown)
+	{
+		main->RotateX(prevMousePos.y - y);
+		main->RotateY(prevMousePos.x - x);
+	}
+
 
 	// Save the previous mouse position, so we have it for the future
 	prevMousePos.x = x;
 	prevMousePos.y = y;
+
+
 }
 
 // --------------------------------------------------------
