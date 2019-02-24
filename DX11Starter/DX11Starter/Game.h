@@ -64,7 +64,7 @@ private:
 	Entity* torus;
 
 	Material* material1;
-
+	Material* material2;
 
 
 	//Main Camera
@@ -73,5 +73,12 @@ private:
 
 	Light DirectionalLight;
 	Light DirectionalLight2;
+
+
+	// Texture related resources
+	ID3D11ShaderResourceView* texture1SRV; // SRV for the first texture
+	ID3D11ShaderResourceView* texture2SRV; //SRV for the second texture
+
+	ID3D11SamplerState* sampler; // Sampler state for the program
 };
 

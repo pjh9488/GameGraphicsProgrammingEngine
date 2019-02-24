@@ -2,6 +2,10 @@
 #include "Vertex.h"
 #include "Entity.h"
 
+
+// DXTK headers
+#include "WICTextureLoader.h" // WIC = Windows Imaging Component
+
 // For the DirectX Math library
 using namespace DirectX;
 
@@ -57,6 +61,11 @@ Game::~Game()
 
 	
 	delete material1;
+	delete material2;
+
+	texture1SRV->Release();
+	texture2SRV->Release();
+	sampler->Release();
 
 	delete main;
 
@@ -96,6 +105,29 @@ void Game::Init()
 	pixelShader->CopyAllBufferData(); // PUSH TO GPU HERE!
 
 	
+	CreateWICTextureFromFile(device, context, L"Assets/Textures/metal_plates.png", 0, &texture1SRV);
+	CreateWICTextureFromFile(device, context, L"Assets/Textures/wooden.png", 0, &texture2SRV);
+
+	
+
+	
+
+	D3D11_SAMPLER_DESC sampDesc = {}; // " = {}" sets whole struct to zeros
+	sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+	sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+	sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+	sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+	//sampDesc.MaxAnisotropy = 16;
+	sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
+
+	device->CreateSamplerState(&sampDesc, &sampler);
+
+
+
+	
+
+	
+
 }
 
 // --------------------------------------------------------
@@ -111,8 +143,6 @@ void Game::LoadShaders()
 
 	pixelShader = new SimplePixelShader(device, context);
 	pixelShader->LoadShaderFile(L"PixelShader.cso");
-
-	material1 = new Material(pixelShader, vertexShader);
 }
 
 
@@ -164,6 +194,9 @@ void Game::CreateBasicGeometry()
 {
 	
 
+	material1 = new Material(pixelShader, vertexShader, texture1SRV, sampler);
+	material2 = new Material(pixelShader, vertexShader, texture2SRV, sampler);
+
 	sphereMesh = new Mesh("Assets/Models/sphere.obj", device);
 	helixMesh = new Mesh("Assets/Models/helix.obj", device);
 	torusMesh = new Mesh("Assets/Models/torus.obj", device);
@@ -172,7 +205,7 @@ void Game::CreateBasicGeometry()
 	// Make some entities
 	sphere = new Entity(material1, sphereMesh);
 	helix = new Entity(material1, helixMesh);
-	torus = new Entity(material1,torusMesh);
+	torus = new Entity(material2,torusMesh);
 
 	sphere->SetPositionX(3.0f);
 	torus->SetPositionX(-3.0f);
@@ -210,6 +243,11 @@ void Game::Update(float deltaTime, float totalTime)
 // --------------------------------------------------------
 void Game::Draw(float deltaTime, float totalTime)
 {
+
+	pixelShader->SetSamplerState("basicSampler", sampler); //send sampler to pixel shader
+	pixelShader->SetShaderResourceView("diffuseTexture", texture1SRV); //send textureSRV to pixel shader
+
+
 	// Background color (Cornflower Blue in this case) for clearing
 	const float color[4] = { 0.4f, 0.6f, 0.75f, 0.0f };
 
@@ -263,6 +301,8 @@ void Game::Draw(float deltaTime, float totalTime)
 		0,     // Offset to the first index we want to use
 		0);    // Offset to add to each index when looking up vertices
 	
+
+	pixelShader->SetShaderResourceView("diffuseTexture", texture2SRV); //Send texture SRV to shader
 	torus->PrepareMaterials(main->GetViewMatrix(), main->GetProjectionMatrix());
 
 	//DrawShape 3

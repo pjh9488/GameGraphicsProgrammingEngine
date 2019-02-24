@@ -10,6 +10,11 @@ cbuffer externalData : register(b0)
 	DirectionalLight light1;
 	DirectionalLight light2;
 }
+
+
+Texture2D diffuseTexture : register(t0);
+SamplerState basicSampler : register(s0);
+
 // Struct representing the data we expect to receive from earlier pipeline stages
 // - Should match the output of our corresponding vertex shader
 // - The name of the struct itself is unimportant
@@ -58,11 +63,14 @@ float4 main(VertexToPixel input) : SV_TARGET
 	dirNdotL2 = saturate(dirNdotL2);
 
 
+	float4 surfaceColor = diffuseTexture.Sample(basicSampler, input.uv);
+
+
 	float3 finalDirColor2 = light2.DiffuseColor * dirNdotL2 + light2.AmbientColor;
 
 	// Just return the input color
 	// - This color (like most values passing through the rasterizer) is 
 	//   interpolated for each pixel between the corresponding vertices 
 	//   of the triangle we're rendering
-	return float4(finalDirColor1 + finalDirColor2, 1);
+	return float4(finalDirColor1 + finalDirColor2, 1) * surfaceColor;
 }
